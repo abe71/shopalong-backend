@@ -6,6 +6,7 @@ import { AppController } from './app.controller'
 import { AppService } from './app.service'
 import { PingModule } from './ping/ping.module'
 import { Ping } from './ping/ping.entity'
+import { HealthModule } from './health/health.module'
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { Ping } from './ping/ping.entity'
       },
     }),
     PingModule,
+    HealthModule,
   ],
   controllers: [AppController],
   providers: [AppService],
