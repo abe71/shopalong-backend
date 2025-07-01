@@ -7,9 +7,11 @@ import { AppService } from './app.service'
 import { PingModule } from './ping/ping.module'
 import { Ping } from './ping/ping.entity'
 import { HealthModule } from './health/health.module'
+import { AppLoggerModule } from './app-logger/app-logger.module'
 
 @Module({
   imports: [
+    AppLoggerModule,
     ConfigModule.forRoot({
       isGlobal: true,
     }),

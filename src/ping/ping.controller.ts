@@ -1,17 +1,15 @@
 import { Controller, Get } from '@nestjs/common'
-import { InjectRepository } from '@nestjs/typeorm'
-import { Repository } from 'typeorm'
-import { Ping } from './ping.entity'
+import { AppLogger } from 'src/app-logger/app-logger.service'
 
 @Controller('ping')
 export class PingController {
-  constructor(
-    @InjectRepository(Ping)
-    private readonly pingRepo: Repository<Ping>,
-  ) {}
+  constructor(private readonly logger: AppLogger) {
+    this.logger.log('PingController initialized', 'PingController')
+  }
 
   @Get()
-  async testPing() {
+  getPing(): string {
+    this.logger.log('Ping route hit', 'PingController')
     return 'pong'
   }
 }
