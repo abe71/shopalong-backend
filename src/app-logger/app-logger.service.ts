@@ -1,22 +1,16 @@
 // src/app-logger/app-logger.service.ts
+
 import { Injectable, LoggerService } from '@nestjs/common'
 import * as winston from 'winston'
-import fetch from 'node-fetch' // node-fetch@2
+import fetch from 'node-fetch'
+import { RequestContextService } from '../app-context/request-context.service'
+import { RequestContext } from '../app-context/request-context'
 
 @Injectable()
 export class AppLogger implements LoggerService {
-  private winstonLogger: winston.Logger
-  private lokiUrl: string | undefined
-  private lokiToken: string | undefined
+  private readonly winstonLogger: winston.Logger
 
-  constructor() {
-    this.lokiUrl = process.env.LOKI_URL
-    this.lokiToken = process.env.LOKI_API_KEY
-
-    if (!this.lokiUrl || !this.lokiToken) {
-      console.error('LOKI_URL or LOKI_API_KEY not set')
-    }
-
+  constructor(private readonly contextService: RequestContextService) {
     this.winstonLogger = winston.createLogger({
       level: 'info',
       transports: [
@@ -24,10 +18,9 @@ export class AppLogger implements LoggerService {
           format: winston.format.combine(
             winston.format.timestamp(),
             winston.format.colorize(),
-            winston.format.printf(
-              ({ level, message, timestamp, context }) =>
-                `${timestamp} [${level}]${context ? ' [' + context + ']' : ''}: ${message}`,
-            ),
+            winston.format.printf(({ level, message, timestamp, context }) => {
+              return `${timestamp} [${level}]${context ? ' [' + context + ']' : ''}: ${message}`
+            }),
           ),
         }),
       ],
@@ -40,36 +33,51 @@ export class AppLogger implements LoggerService {
     context?: string,
     trace?: string,
   ) {
-    if (!this.lokiUrl || !this.lokiToken) return
+    const lokiUrl = process.env.LOKI_URL
+    const lokiToken = process.env.LOKI_API_KEY
+    if (!lokiUrl || !lokiToken) return
 
-    const logLine =
-      typeof message === 'string' ? message : JSON.stringify(message)
-    const timestamp = `${Date.now()}000000` // nanoseconds required by Loki
-    const body = {
+    const contextData: RequestContext = this.contextService.getContext()
+    const timestamp = `${Date.now()}000000`
+
+    const logPayload = {
       streams: [
         {
           stream: {
             app: 'shopalong',
             env: process.env.NODE_ENV || 'development',
+            service_name: 'shopalong',
             level,
-            context: context || '',
+            ...Object.entries(contextData).reduce(
+              (acc, [key, value]) => {
+                acc[key] =
+                  typeof value === 'string' ? value : JSON.stringify(value)
+                return acc
+              },
+              {} as Record<string, string>,
+            ),
           },
-          values: [[timestamp, logLine]],
+          values: [
+            [
+              timestamp,
+              typeof message === 'string' ? message : JSON.stringify(message),
+            ],
+          ],
         },
       ],
     }
 
     try {
-      await fetch(this.lokiUrl, {
+      await fetch(lokiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${this.lokiToken}`,
+          Authorization: `Bearer ${lokiToken}`,
         },
-        body: JSON.stringify(body),
+        body: JSON.stringify(logPayload),
       })
-    } catch (err) {
-      console.error('Failed to send log to Loki:', err)
+    } catch (error) {
+      this.winstonLogger.warn(`Failed to send log to Loki: ${error.message}`)
     }
   }
 
@@ -88,12 +96,12 @@ export class AppLogger implements LoggerService {
     this.sendToLoki('warn', message, context)
   }
 
-  debug(message: any, context?: string) {
+  debug?(message: any, context?: string) {
     this.winstonLogger.debug(message, { context })
     this.sendToLoki('debug', message, context)
   }
 
-  verbose(message: any, context?: string) {
+  verbose?(message: any, context?: string) {
     this.winstonLogger.verbose(message, { context })
     this.sendToLoki('verbose', message, context)
   }

@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common'
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common'
 import { ConfigModule, ConfigService } from '@nestjs/config'
 import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm'
 
@@ -8,9 +8,12 @@ import { PingModule } from './ping/ping.module'
 import { Ping } from './ping/ping.entity'
 import { HealthModule } from './health/health.module'
 import { AppLoggerModule } from './app-logger/app-logger.module'
+import { RequestContextMiddleware } from './app-context/request-context.middleware'
+import { AppContextModule } from './app-context/app-context.module'
 
 @Module({
   imports: [
+    AppContextModule,
     AppLoggerModule,
     ConfigModule.forRoot({
       isGlobal: true,
@@ -49,4 +52,8 @@ import { AppLoggerModule } from './app-logger/app-logger.module'
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(RequestContextMiddleware).forRoutes('*')
+  }
+}

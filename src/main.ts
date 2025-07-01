@@ -17,13 +17,10 @@ async function bootstrap() {
     console.log('Before listen')
     await app.listen(port)
 
-    logger.log(
-      `🚀 Application is running on: http://localhost:${port}`,
-      'bootstrap',
-    )
+    logger.log(`🚀 Application is running on: http://localhost:${port}`)
   } catch (err) {
     if (logger) {
-      logger.error('❌ Bootstrap error:', err, 'bootstrap')
+      logger.error('❌ Bootstrap error:', err)
     } else {
       console.error('❌ Bootstrap error (no logger available):', err)
     }
