@@ -1,27 +1,35 @@
+// src/app-context/request-context.service.ts
 import { Injectable } from '@nestjs/common'
-import { AsyncLocalStorage } from 'node:async_hooks'
-import { RequestContext } from 'src/app-context/request-context'
+import { AsyncLocalStorage } from 'async_hooks'
+import * as os from 'os'
+import { RequestContext } from './request-context'
 
 @Injectable()
 export class RequestContextService {
-  private readonly asyncLocalStorage = new AsyncLocalStorage<RequestContext>()
-
-  runWithContext<T>(context: RequestContext, callback: () => T): T {
-    return this.asyncLocalStorage.run(context, callback)
-  }
+  private readonly als = new AsyncLocalStorage<RequestContext>()
 
   getContext(): RequestContext {
     return (
-      this.asyncLocalStorage.getStore() ?? {
-        requestId: 'unknown',
-        userId: 'unknown',
-        deviceId: 'unknown',
+      this.als.getStore() ?? {
+        requestId: 'manual-fallback',
+        hostname: os.hostname(),
         ip: 'unknown',
+        path: 'unknown',
+        method: 'manual',
+        userAgent: 'manual',
+        service_name: 'shopalong',
+        app: 'shopalong-backend',
       }
     )
   }
 
-  get<T extends keyof RequestContext>(key: T): RequestContext[T] | undefined {
-    return this.asyncLocalStorage.getStore()?.[key]
+  setContextPartial(patch: Partial<RequestContext>) {
+    const ctx = this.als.getStore()
+    if (!ctx) throw new Error('Context not available')
+    Object.assign(ctx, patch)
+  }
+
+  runWithContext(ctx: RequestContext, fn: () => void) {
+    this.als.run(ctx, fn)
   }
 }

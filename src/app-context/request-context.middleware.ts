@@ -1,27 +1,44 @@
 // src/app-context/request-context.middleware.ts
-
-import { Injectable, NestMiddleware } from '@nestjs/common'
 import { Request, Response, NextFunction } from 'express'
-import { v4 as uuidv4 } from 'uuid'
 import { RequestContextService } from './request-context.service'
+import { RequestContext } from './request-context'
+import * as os from 'os'
+import * as crypto from 'crypto'
 
-@Injectable()
-export class RequestContextMiddleware implements NestMiddleware {
-  constructor(private readonly contextService: RequestContextService) {}
-
-  use(req: Request, res: Response, next: NextFunction): void {
-    const context = {
-      requestId: uuidv4(),
-      userId: req.headers['x-user-id'] as string | undefined,
-      deviceId: req.headers['x-device-id'] as string | undefined,
-      ip: req.ip,
+export function createRequestContextMiddleware(
+  contextService: RequestContextService,
+) {
+  return function useRequestContext(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) {
+    const headers = req.headers
+    const context: RequestContext = {
+      requestId: headers['x-request-id']?.toString() || crypto.randomUUID(),
+      deviceId: headers['x-device-id']?.toString() || 'unknown',
+      app: headers['x-app']?.toString(),
+      service_name: headers['x-service-name']?.toString(),
+      metadata: parseMetadataHeader(headers['x-metadata']),
       method: req.method,
-      path: req.originalUrl,
-      hostname: req.hostname,
-      query: req.query,
-      userAgent: req.headers['user-agent'],
+      path: req.url,
+      hostname: os.hostname(),
+      ip: req.socket.remoteAddress || '',
+      userAgent: headers['user-agent']?.toString(),
+      query: (req as any).query || {},
     }
 
-    this.contextService.runWithContext(context, () => next())
+    contextService.runWithContext(context, next)
+  }
+}
+
+function parseMetadataHeader(
+  header: string | string[] | undefined,
+): Record<string, any> {
+  if (!header) return {}
+  try {
+    return JSON.parse(Array.isArray(header) ? header[0] : header)
+  } catch {
+    return {}
   }
 }

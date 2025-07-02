@@ -12,7 +12,7 @@ export class AppLogger implements LoggerService {
 
   constructor(private readonly contextService: RequestContextService) {
     this.winstonLogger = winston.createLogger({
-      level: 'info',
+      level: 'debug',
       transports: [
         new winston.transports.Console({
           format: winston.format.combine(
@@ -37,18 +37,18 @@ export class AppLogger implements LoggerService {
     const lokiToken = process.env.LOKI_API_KEY
     if (!lokiUrl || !lokiToken) return
 
-    const contextData: RequestContext = this.contextService.getContext()
+    const ctx: RequestContext = this.contextService.getContext()
     const timestamp = `${Date.now()}000000`
 
     const logPayload = {
       streams: [
         {
           stream: {
-            app: 'shopalong',
+            app: ctx.app || 'shopalong',
             env: process.env.NODE_ENV || 'development',
-            service_name: 'shopalong',
+            service_name: ctx.service_name || 'shopalong',
             level,
-            ...Object.entries(contextData).reduce(
+            ...Object.entries(ctx).reduce(
               (acc, [key, value]) => {
                 acc[key] =
                   typeof value === 'string' ? value : JSON.stringify(value)
@@ -96,7 +96,7 @@ export class AppLogger implements LoggerService {
     this.sendToLoki('warn', message, context)
   }
 
-  debug?(message: any, context?: string) {
+  debug(message: any, context?: string) {
     this.winstonLogger.debug(message, { context })
     this.sendToLoki('debug', message, context)
   }

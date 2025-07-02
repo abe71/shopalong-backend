@@ -1,3 +1,5 @@
+// src/app-context/request-context.ts
+
 // Define a unified shape of our request context
 export interface RequestContext {
   requestId: string
@@ -9,4 +11,7 @@ export interface RequestContext {
   hostname?: string
   query?: Record<string, any>
   userAgent?: string
+  app?: string
+  service_name?: string
+  metadata?: Record<string, any>
 }

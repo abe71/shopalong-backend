@@ -8,11 +8,12 @@ import { PingModule } from './ping/ping.module'
 import { Ping } from './ping/ping.entity'
 import { HealthModule } from './health/health.module'
 import { AppLoggerModule } from './app-logger/app-logger.module'
-import { RequestContextMiddleware } from './app-context/request-context.middleware'
 import { AppContextModule } from './app-context/app-context.module'
+import { LogsModule } from './logs/logs.module'
 
 @Module({
   imports: [
+    LogsModule,
     AppContextModule,
     AppLoggerModule,
     ConfigModule.forRoot({
@@ -39,10 +40,8 @@ import { AppContextModule } from './app-context/app-context.module'
           synchronize: true,
           retryAttempts: 5,
           retryDelay: 3000,
-          logging: 'all',
+          logging: ['error'],
         }
-
-        console.log('TypeORM options prepared:', opts)
         return opts
       },
     }),
@@ -52,8 +51,4 @@ import { AppContextModule } from './app-context/app-context.module'
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule implements NestModule {
-  configure(consumer: MiddlewareConsumer) {
-    consumer.apply(RequestContextMiddleware).forRoutes('*')
-  }
-}
+export class AppModule {}
