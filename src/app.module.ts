@@ -10,6 +10,7 @@ import { HealthModule } from './health/health.module'
 import { AppLoggerModule } from './app-logger/app-logger.module'
 import { AppContextModule } from './app-context/app-context.module'
 import { LogsModule } from './logs/logs.module'
+import { OcrModule } from './ocr/ocr.module'
 
 @Module({
   imports: [
@@ -47,6 +48,7 @@ import { LogsModule } from './logs/logs.module'
     }),
     PingModule,
     HealthModule,
+    OcrModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -2,8 +2,8 @@
 import request from 'supertest'
 import { Test, TestingModule } from '@nestjs/testing'
 import { INestApplication, ValidationPipe } from '@nestjs/common'
-import { AppModule } from '../src/app.module'
-import { LogsService } from '../src/logs/logs.service'
+import { AppModule } from '../../src/app.module'
+import { LogsService } from '../../src/logs/logs.service'
 
 describe('LogsController (e2e)', () => {
   let app: INestApplication

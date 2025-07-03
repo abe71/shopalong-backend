@@ -6,6 +6,14 @@ import { AppLogger } from './app-logger/app-logger.service'
 import { createRequestContextMiddleware } from './app-context/request-context.middleware'
 import { RequestContextService } from './app-context/request-context.service'
 
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger'
+
+const swaggerConfig = new DocumentBuilder()
+  .setTitle('Shopalong API')
+  .setDescription('OCR and shopping assistant endpoints')
+  .setVersion('0.1')
+  .build()
+
 async function bootstrap() {
   let logger: AppLogger | undefined
 
@@ -18,6 +26,8 @@ async function bootstrap() {
     app.useGlobalPipes(
       new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }),
     )
+    const document = SwaggerModule.createDocument(app, swaggerConfig)
+    SwaggerModule.setup('docs', app, document)
 
     const config = app.get(ConfigService)
     const port = config.get<number>('PORT') || 3000
