@@ -11,6 +11,7 @@ import { AppLoggerModule } from './app-logger/app-logger.module'
 import { AppContextModule } from './app-context/app-context.module'
 import { LogsModule } from './logs/logs.module'
 import { OcrModule } from './ocr/ocr.module'
+import { UsersModule } from './users/users.module'
 
 @Module({
   imports: [
@@ -49,6 +50,7 @@ import { OcrModule } from './ocr/ocr.module'
     PingModule,
     HealthModule,
     OcrModule,
+    UsersModule,
   ],
   controllers: [AppController],
   providers: [AppService],

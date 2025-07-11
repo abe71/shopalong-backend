@@ -4,7 +4,7 @@ import axios from 'axios'
 import FormData from 'form-data'
 import { ConfigService } from '@nestjs/config'
 import { OCRUploadDto } from './ocr-upload.dto'
-import { OCR_VIDEO_LIMITS } from '../shopalong-config'
+import { OCR_VIDEO_LIMITS } from '../shopalong-constants'
 import { AppLogger } from 'src/app-logger/app-logger.service'
 
 @Injectable()
