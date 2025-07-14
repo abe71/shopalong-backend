@@ -60,7 +60,9 @@ export class OcrController {
       this.ocrService.extractUploadData(body, files)
 
     await this.ocrService.uploadFiles(listGuid, deviceUuid, fileMap, deviceInfo)
-    await this.ocrService.forwardToInternalProcessor(
+
+    // This call will complete significantly after this method completes.
+    this.ocrService.launchAsyncOcrProcessing(
       listGuid,
       deviceUuid,
       fileMap,

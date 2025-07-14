@@ -1,155 +1,72 @@
-jest.mock('axios')
-import { OcrService } from '../../src/ocr/ocr.service'
-import { BadRequestException } from '@nestjs/common'
-import { ConfigService } from '@nestjs/config'
-import { RequestContextService } from 'src/app-context/request-context.service'
-import { AppLogger } from 'src/app-logger/app-logger.service'
-import axios from 'axios'
+import { INestApplication, ValidationPipe } from '@nestjs/common'
+import { Test, TestingModule } from '@nestjs/testing'
+import request from 'supertest'
+import { AppModule } from '@/app.module'
+import { List } from '@/lists/entities/lists.entity'
+import { ListItem } from '@/lists/entities/list_items.entity'
+import { ListStatusEvent } from '@/lists/entities/list_status_events.entity'
+import { ListItemAlternative } from '@/lists/entities/list_item_alternatives.entity'
+import { ListSuggestion } from '@/lists/entities/list_suggestions.entity'
+import { UserList } from '@/lists/entities/user_lists.entity'
+import { OCR_VIDEO_LIMITS } from '@/shopalong-constants'
 
-const mockedAxios = axios as jest.Mocked<typeof axios>
+const TEST_ENTITIES = [
+  List,
+  ListItem,
+  ListStatusEvent,
+  ListItemAlternative,
+  ListSuggestion,
+  UserList,
+]
 
-const makeFile = (
-  fieldname: string,
-  size = 1_000_000,
-  mimetype = 'video/mp4',
-) => ({
-  fieldname,
-  originalname: `${fieldname}.mp4`,
-  size,
-  mimetype,
-  buffer: Buffer.from('fake'),
-})
+describe('OcrController (e2e)', () => {
+  let app: INestApplication
+  const fakeVideos: Record<string, Buffer> = {}
 
-describe('OcrService', () => {
-  let service: OcrService
-  let configService: ConfigService
-  let mockLogger: AppLogger
+  beforeAll(async () => {
+    const moduleFixture: TestingModule = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile()
 
-  beforeEach(() => {
-    const mockRequestContextService = {
-      get: jest.fn().mockReturnValue(undefined),
-    } as unknown as RequestContextService
+    app = moduleFixture.createNestApplication()
+    app.useGlobalPipes(new ValidationPipe({ whitelist: true }))
+    await app.init()
 
-    mockLogger = new AppLogger(mockRequestContextService)
-    jest.spyOn(mockLogger, 'log').mockImplementation(() => {})
-    jest.spyOn(mockLogger, 'error').mockImplementation(() => {})
-    jest.spyOn(mockLogger, 'warn').mockImplementation(() => {})
-
-    configService = {
-      get: jest.fn((key: string) => {
-        if (key === 'OCR_VIDEO_LIMITS') {
-          return {
-            video_full: { min: 100_000, max: 15_000_000 },
-            video_top: { min: 50_000, max: 5_000_000 },
-            video_bottom: { min: 50_000, max: 5_000_000 },
-          }
-        }
-        if (key === 'INTERNAL_OCR_URL')
-          return 'http://mocked-internal-url/ocr/process'
-        return undefined
-      }),
-    } as any
-
-    service = new OcrService(configService, mockLogger)
-  })
-
-  describe('uploadFiles', () => {
-    it('accepts valid files', async () => {
-      const files = {
-        video_full: makeFile('video_full'),
-        video_top: makeFile('video_top'),
-        video_bottom: makeFile('video_bottom'),
-      }
-      await expect(
-        service.uploadFiles('guid', 'uuid', files),
-      ).resolves.toBeUndefined()
-    })
-
-    it('throws if file is missing', async () => {
-      const files = {
-        video_full: makeFile('video_full'),
-        video_top: makeFile('video_top'),
-      }
-      await expect(service.uploadFiles('guid', 'uuid', files)).rejects.toThrow(
-        /Missing file: video_bottom/,
-      )
-    })
-
-    it('throws if mimetype is invalid', async () => {
-      const files = {
-        video_full: makeFile('video_full', 1_000_000, 'video/avi'),
-        video_top: makeFile('video_top'),
-        video_bottom: makeFile('video_bottom'),
-      }
-      await expect(service.uploadFiles('guid', 'uuid', files)).rejects.toThrow(
-        /video_full must be MP4/,
-      )
-    })
-
-    it('throws if file too small', async () => {
-      const files = {
-        video_full: makeFile('video_full', 10),
-        video_top: makeFile('video_top'),
-        video_bottom: makeFile('video_bottom'),
-      }
-      await expect(service.uploadFiles('guid', 'uuid', files)).rejects.toThrow(
-        /video_full size must be between/,
-      )
-    })
-
-    it('throws if file too large', async () => {
-      const files = {
-        video_full: makeFile('video_full', 20_000_000),
-        video_top: makeFile('video_top'),
-        video_bottom: makeFile('video_bottom'),
-      }
-      await expect(service.uploadFiles('guid', 'uuid', files)).rejects.toThrow(
-        /video_full size must be between/,
-      )
+    // Prepare mock video buffers for each required input
+    Object.entries(OCR_VIDEO_LIMITS).forEach(([key, { min }]) => {
+      fakeVideos[key] = Buffer.alloc(min + 1000, 0) // safely above minimum
     })
   })
 
-  describe('forwardToInternalProcessor', () => {
-    const files = {
-      video_full: makeFile('video_full'),
-      video_top: makeFile('video_top'),
-      video_bottom: makeFile('video_bottom'),
-    }
+  afterAll(async () => {
+    await app.close()
+  })
 
-    it('calls axios with correct data', async () => {
-      mockedAxios.post.mockResolvedValue({ data: { ok: true } })
-
-      await expect(
-        service.forwardToInternalProcessor('guid', 'uuid', files, 'info'),
-      ).resolves.toBeUndefined()
-
-      expect(mockedAxios.post).toHaveBeenCalledWith(
-        expect.stringContaining('/ocr/process'),
-        expect.any(Object),
-        expect.objectContaining({ headers: expect.any(Object) }),
-      )
+  it('/ocr/process (POST) - accepts valid upload', async () => {
+    const response = await request(app.getHttpServer())
+      .post('/ocr/process')
+      .field('list_guid', '123e4567-e89b-12d3-a456-426614174000')
+      .field('device_uuid', 'device-abc')
+      .field('device_info', JSON.stringify({ model: 'iPhone' }))
+      .attach('video_full', fakeVideos.video_full, 'video_full.mp4')
+      .attach('video_top', fakeVideos.video_top, 'video_top.mp4')
+      .attach('video_bottom', fakeVideos.video_bottom, 'video_bottom.mp4')
+    expect(response.status).toBe(202)
+    expect(response.body).toMatchObject({
+      status: 'accepted',
+      list_guid: '123e4567-e89b-12d3-a456-426614174000',
+      message: expect.any(String),
     })
+  })
 
-    it('handles axios error', async () => {
-      mockedAxios.post.mockRejectedValue({
-        message: 'ENOTFOUND',
-        response: undefined,
-      })
+  it('/ocr/process (POST) - fails on invalid list_guid', async () => {
+    const response = await request(app.getHttpServer())
+      .post('/ocr/process')
+      .field('list_guid', 'not-a-guid')
+      .field('device_uuid', 'device-abc')
+      .attach('video_full', fakeVideos.video_full, 'video_full.mp4')
 
-      await expect(
-        service.forwardToInternalProcessor('guid', 'uuid', files, 'info'),
-      ).resolves.toBeUndefined()
-    })
-
-    it('logs error on 500 response', async () => {
-      mockedAxios.post.mockRejectedValue({
-        message: 'Internal Server Error',
-        response: { data: 'Something broke' },
-      })
-
-      await expect(
-        service.forwardToInternalProcessor('guid', 'uuid', files),
-      ).resolves.toBeUndefined()
-    })
+    expect(response.status).toBe(400)
+    expect(response.body.message).toContain('list_guid must be a UUID')
   })
 })

@@ -5,7 +5,16 @@ import FormData from 'form-data'
 import { ConfigService } from '@nestjs/config'
 import { OCRUploadDto } from './ocr-upload.dto'
 import { OCR_VIDEO_LIMITS } from '../shopalong-constants'
-import { AppLogger } from 'src/app-logger/app-logger.service'
+import { AppLogger } from '@/app-logger/app-logger.service'
+import { UsersService } from '@/users/users.service'
+import { ListsService } from '@/lists/lists.service'
+import { ListItemsService } from '@/lists/list_items.service'
+import { ListSuggestionsService } from '@/lists/list_suggestions.service'
+import { ListStatusEventsService } from '@/lists/list_status_events.service'
+import { InjectRepository, getRepositoryToken } from '@nestjs/typeorm'
+import { User } from '@/users/entities/users.entity'
+import { Repository } from 'typeorm'
+import { List } from '@/lists/entities/lists.entity'
 
 @Injectable()
 export class OcrService {
@@ -14,6 +23,15 @@ export class OcrService {
   constructor(
     private configService: ConfigService,
     private readonly logger: AppLogger,
+    private readonly usersService: UsersService,
+    private readonly listsService: ListsService,
+    private readonly listItemsService: ListItemsService,
+    private readonly listSuggestionsService: ListSuggestionsService,
+    private readonly listStatusEventsService: ListStatusEventsService,
+    @InjectRepository(User)
+    private readonly userRepo: Repository<User>,
+    @InjectRepository(List)
+    private readonly listRepo: Repository<List>,
   ) {
     this.internalOcrUrl =
       this.configService.get<string>('INTERNAL_OCR_URL') ??
@@ -69,7 +87,7 @@ export class OcrService {
       }
     }
 
-    this.logger.log(
+    this.logger.debug(
       'OCR upload validated',
       JSON.stringify({
         list_guid: listGuid,
@@ -86,8 +104,11 @@ export class OcrService {
     files: Record<string, MulterFile>,
     deviceInfo?: string,
   ): Promise<void> {
-    const form = new FormData()
+    const user = await this.usersService.resolveOrCreateUser(deviceUuid)
+    const list = await this.listsService.create(listGuid, user.id)
+    await this.listStatusEventsService.log(list.list_guid, 'ocr_started')
 
+    const form = new FormData()
     form.append('list_guid', listGuid)
     form.append('device_uuid', deviceUuid)
     if (deviceInfo) form.append('device_info', deviceInfo)
@@ -95,7 +116,6 @@ export class OcrService {
     for (const key of ['video_full', 'video_top', 'video_bottom']) {
       const file = files[key]
       if (!file) continue
-
       form.append(key, file.buffer, {
         filename: file.originalname,
         contentType: file.mimetype,
@@ -105,27 +125,66 @@ export class OcrService {
     try {
       const response = await axios.post(this.internalOcrUrl, form, {
         headers: form.getHeaders(),
-        timeout: 5000,
+        timeout: 120000,
       })
 
-      this.logger.log(
-        'Forwarded OCR request to internal service',
-        JSON.stringify({
-          list_guid: listGuid,
-          device_uuid: deviceUuid,
-          response: response.data,
-        }),
+      const data = response.data
+
+      await this.listItemsService.saveItems(list.list_guid, data.items || [])
+      await this.listSuggestionsService.saveSuggestions(
+        list.list_guid,
+        data.suggestions || [],
+      )
+
+      await this.listStatusEventsService.log(list.list_guid, 'ocr_completed', {
+        item_count: data.items?.length ?? 0,
+        suggestion_count: data.suggestions?.length ?? 0,
+      })
+
+      this.logger.debug(
+        'Forwarded OCR request and saved result',
+        JSON.stringify({ list_guid: listGuid, user_id: user.id }),
       )
     } catch (err) {
+      await this.listStatusEventsService.log(list.list_guid, 'ocr_failed', {
+        error: err.message,
+        response: err.response?.data,
+      })
+
       this.logger.error(
-        'Failed to forward OCR to internal service',
+        'OCR request failed',
         JSON.stringify({
           list_guid: listGuid,
-          device_uuid: deviceUuid,
+          user_id: user.id,
           error: err.message,
           response: err.response?.data,
         }),
       )
     }
+  }
+
+  launchAsyncOcrProcessing(
+    listGuid: string,
+    deviceUuid: string,
+    fileMap: Record<string, MulterFile>,
+    deviceInfo?: string,
+  ): void {
+    this.forwardToInternalProcessor(listGuid, deviceUuid, fileMap, deviceInfo)
+      .then(() => {
+        this.logger.debug(
+          'OCR async processing completed',
+          JSON.stringify({ list_guid: listGuid }),
+        )
+      })
+      .catch((err) => {
+        this.logger.error(
+          'OCR async processing failed',
+          JSON.stringify({
+            list_guid: listGuid,
+            error: err.message,
+            stack: err.stack,
+          }),
+        )
+      })
   }
 }

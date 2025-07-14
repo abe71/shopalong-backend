@@ -1,6 +1,6 @@
 import { Module, Global } from '@nestjs/common'
 import { AppLogger } from './app-logger.service'
-import { AppContextModule } from 'src/app-context/app-context.module'
+import { AppContextModule } from '@/app-context/app-context.module'
 
 @Global()
 @Module({

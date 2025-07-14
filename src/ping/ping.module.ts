@@ -4,7 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm'
 import { Ping } from './ping.entity'
 import { PingController } from './ping.controller'
 import { PingService } from './ping.service'
-import { AppLoggerModule } from 'src/app-logger/app-logger.module'
+import { AppLoggerModule } from '@/app-logger/app-logger.module'
 
 @Module({
   imports: [TypeOrmModule.forFeature([Ping]), AppLoggerModule],

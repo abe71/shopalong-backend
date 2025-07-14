@@ -1,3 +1,4 @@
+import { List } from '@/lists/entities/lists.entity'
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -5,12 +6,16 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   DeleteDateColumn,
+  OneToMany,
 } from 'typeorm'
 
 @Entity()
 export class User {
   @PrimaryGeneratedColumn('uuid')
   id: string
+
+  @OneToMany(() => List, (list) => list.user)
+  lists: List[]
 
   @Column({ unique: true })
   device_id: string

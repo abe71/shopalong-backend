@@ -12,6 +12,14 @@ import { AppContextModule } from './app-context/app-context.module'
 import { LogsModule } from './logs/logs.module'
 import { OcrModule } from './ocr/ocr.module'
 import { UsersModule } from './users/users.module'
+import { ListsModule } from './lists/lists.module'
+import { List } from './lists/entities/lists.entity'
+import { ListStatusEvent } from './lists/entities/list_status_events.entity'
+import { ListItem } from './lists/entities/list_items.entity'
+import { ListItemAlternative } from './lists/entities/list_item_alternatives.entity'
+import { UserList } from './lists/entities/user_lists.entity'
+import { User } from './users/entities/users.entity'
+import { ListSuggestion } from './lists/entities/list_suggestions.entity'
 
 @Module({
   imports: [
@@ -27,30 +35,49 @@ import { UsersModule } from './users/users.module'
       useFactory: async (
         config: ConfigService,
       ): Promise<TypeOrmModuleOptions> => {
+        const dbType = config.get<string>('DB_TYPE') || 'sqlite'
+
+        if (dbType === 'sqlite') {
+          return {
+            type: 'sqlite',
+            database: ':memory:',
+            entities: [
+              UserList,
+              User,
+              List,
+              ListStatusEvent,
+              ListItem,
+              ListSuggestion,
+              ListItemAlternative,
+            ],
+            synchronize: true,
+          }
+        }
+
         const dbHost = config.get('DB_HOST')
         console.log('Connecting to DB at:', dbHost)
 
-        const opts: TypeOrmModuleOptions = {
+        return {
           type: 'postgres',
-          host: config.get<string>('DB_HOST') ?? 'localhost',
+          host: dbHost ?? 'localhost',
           port: config.get<number>('DB_PORT') ?? 5432,
           username: config.get<string>('DB_USERNAME') ?? 'postgres',
           password: config.get<string>('DB_PASSWORD') ?? 'postgres',
           database: config.get<string>('DB_NAME') ?? 'shopalong',
-          entities: [Ping],
+          entities: [Ping, List, ListStatusEvent],
           autoLoadEntities: true,
           synchronize: true,
           retryAttempts: 5,
           retryDelay: 3000,
           logging: ['error'],
         }
-        return opts
       },
     }),
     PingModule,
     HealthModule,
     OcrModule,
     UsersModule,
+    ListsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -1,5 +1,3 @@
-// src/app-context/request-context.ts
-
 // Define a unified shape of our request context
 export interface RequestContext {
   requestId: string
