@@ -1,6 +1,6 @@
 # Shopalong Backend
 
-_Last updated: 2025-07-03_
+_Last updated: 2025-07-15_
 
 This is the **NestJS-based backend** service for the Shopalong platform. It provides endpoints for OCR list upload and processing, structured logging, and internal communication between app components.
 
@@ -9,6 +9,7 @@ This is the **NestJS-based backend** service for the Shopalong platform. It prov
 ## Overview
 
 This backend handles:
+
 - **OCR file upload** via multipart `POST /ocr/process`
 - **Validation** of files for size, type, and presence
 - **Forwarding** to an internal processor endpoint
@@ -60,6 +61,24 @@ npm run test:e2e       # E2E with full app context
 
 ---
 
+## Environment Variables
+
+The backend expects a `.env` file with the following keys:
+
+```env
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=postgres
+DB_PASSWORD=yourpassword
+DB_NAME=grocery_db
+VISION_API_URL=http://localhost:3030/ocr/process
+OCR_UPLOAD_PATH=/tmp/ocr-uploads
+```
+
+Each value is consumed via NestJS `ConfigService`.
+
+---
+
 ## Deployment
 
 This backend is designed to be deployed independently and connects via HTTP/REST to other services. It can be containerized or run on bare metal.
@@ -71,4 +90,3 @@ This backend is designed to be deployed independently and connects via HTTP/REST
 - This project uses `npm` only — no `yarn`
 - Logs are structured and contextualized using a custom logger
 - Internal and external APIs are versioned and documented via Swagger
-

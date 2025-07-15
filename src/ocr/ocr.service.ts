@@ -68,7 +68,7 @@ export class OcrService {
     files: Record<string, MulterFile>,
     deviceInfo?: string,
   ): Promise<void> {
-    const required = ['video_full', 'video_top', 'video_bottom']
+    const required = ['full', 'top', 'bottom']
 
     for (const key of required) {
       if (!files[key]) {
@@ -110,10 +110,11 @@ export class OcrService {
 
     const form = new FormData()
     form.append('list_guid', listGuid)
+    form.append('user_id', user.id)
     form.append('device_uuid', deviceUuid)
     if (deviceInfo) form.append('device_info', deviceInfo)
 
-    for (const key of ['video_full', 'video_top', 'video_bottom']) {
+    for (const key of ['full', 'top', 'bottom']) {
       const file = files[key]
       if (!file) continue
       form.append(key, file.buffer, {
@@ -129,16 +130,33 @@ export class OcrService {
       })
 
       const data = response.data
+      this.logger.debug('Vision response:', JSON.stringify(data, null, 2))
 
-      await this.listItemsService.saveItems(list.list_guid, data.items || [])
+      const items = data.smartList ?? data.items ?? []
+      const cleanedItems = (data.smartList ?? []).map((item) => {
+        const topAlt = item.alternatives?.[0]
+
+        return {
+          ordinal: item.ordinal,
+          label: item.label || item.original || 'OCR-failed',
+          category: topAlt?.category || 'uncategorized',
+          confidence: topAlt?.confidence ?? 0,
+          source: 'ocr', // or wherever it came from
+          listListGuid: list.list_guid,
+        }
+      })
+
+      await this.listItemsService.saveItems(list.list_guid, cleanedItems)
+
+      const suggestions = data.suggestions ?? []
       await this.listSuggestionsService.saveSuggestions(
         list.list_guid,
-        data.suggestions || [],
+        suggestions,
       )
 
       await this.listStatusEventsService.log(list.list_guid, 'ocr_completed', {
-        item_count: data.items?.length ?? 0,
-        suggestion_count: data.suggestions?.length ?? 0,
+        item_count: items.length,
+        suggestion_count: suggestions.length,
       })
 
       this.logger.debug(

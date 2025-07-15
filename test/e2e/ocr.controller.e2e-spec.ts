@@ -44,9 +44,9 @@ jest.mock('axios', () => ({
 
 jest.mock('../../src/shopalong-constants', () => ({
   OCR_VIDEO_LIMITS: {
-    video_full: { min: 1, max: 15_000_000 },
-    video_top: { min: 1, max: 5_000_000 },
-    video_bottom: { min: 1, max: 5_000_000 },
+    full: { min: 1, max: 15_000_000 },
+    top: { min: 1, max: 5_000_000 },
+    bottom: { min: 1, max: 5_000_000 },
   },
 }))
 
@@ -149,9 +149,9 @@ describe('OcrController (e2e) with full processing', () => {
       .field('list_guid', list_guid)
       .field('device_uuid', 'device-abc')
       .field('device_info', JSON.stringify({ model: 'iPhone' }))
-      .attach('video_full', path.join(__dirname, 'sample.mp4'))
-      .attach('video_top', path.join(__dirname, 'sample.mp4'))
-      .attach('video_bottom', path.join(__dirname, 'sample.mp4'))
+      .attach('full', path.join(__dirname, 'sample.mp4'))
+      .attach('top', path.join(__dirname, 'sample.mp4'))
+      .attach('bottom', path.join(__dirname, 'sample.mp4'))
 
     expect(response.status).toBe(202)
     expect(response.body).toMatchObject({

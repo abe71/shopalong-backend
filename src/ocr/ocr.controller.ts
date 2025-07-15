@@ -34,17 +34,11 @@ export class OcrController {
         list_guid: { type: 'string', format: 'uuid' },
         device_uuid: { type: 'string' },
         device_info: { type: 'string', nullable: true },
-        video_full: { type: 'string', format: 'binary' },
-        video_top: { type: 'string', format: 'binary' },
-        video_bottom: { type: 'string', format: 'binary' },
+        full: { type: 'string', format: 'binary' },
+        top: { type: 'string', format: 'binary' },
+        bottom: { type: 'string', format: 'binary' },
       },
-      required: [
-        'list_guid',
-        'device_uuid',
-        'video_full',
-        'video_top',
-        'video_bottom',
-      ],
+      required: ['list_guid', 'device_uuid', 'full', 'top', 'bottom'],
     },
   })
   @ApiResponse({

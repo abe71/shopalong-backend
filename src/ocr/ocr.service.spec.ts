@@ -33,9 +33,9 @@ describe('OcrController (e2e)', () => {
     await app.init()
 
     // Prepare mock video buffers for each required input
-    Object.entries(OCR_VIDEO_LIMITS).forEach(([key, { min }]) => {
-      fakeVideos[key] = Buffer.alloc(min + 1000, 0) // safely above minimum
-    })
+    fakeVideos.full = Buffer.alloc(OCR_VIDEO_LIMITS.full.min + 1000)
+    fakeVideos.top = Buffer.alloc(OCR_VIDEO_LIMITS.top.min + 1000)
+    fakeVideos.bottom = Buffer.alloc(OCR_VIDEO_LIMITS.bottom.min + 1000)
   })
 
   afterAll(async () => {
@@ -47,10 +47,10 @@ describe('OcrController (e2e)', () => {
       .post('/ocr/process')
       .field('list_guid', '123e4567-e89b-12d3-a456-426614174000')
       .field('device_uuid', 'device-abc')
-      .field('device_info', JSON.stringify({ model: 'iPhone' }))
-      .attach('video_full', fakeVideos.video_full, 'video_full.mp4')
-      .attach('video_top', fakeVideos.video_top, 'video_top.mp4')
-      .attach('video_bottom', fakeVideos.video_bottom, 'video_bottom.mp4')
+      .field('device_info', 'iPhone')
+      .attach('full', fakeVideos.full, 'video_full.mp4')
+      .attach('top', fakeVideos.top, 'video_top.mp4')
+      .attach('bottom', fakeVideos.bottom, 'video_bottom.mp4')
     expect(response.status).toBe(202)
     expect(response.body).toMatchObject({
       status: 'accepted',
@@ -64,7 +64,7 @@ describe('OcrController (e2e)', () => {
       .post('/ocr/process')
       .field('list_guid', 'not-a-guid')
       .field('device_uuid', 'device-abc')
-      .attach('video_full', fakeVideos.video_full, 'video_full.mp4')
+      .attach('full', fakeVideos.video_full, 'video_full.mp4')
 
     expect(response.status).toBe(400)
     expect(response.body.message).toContain('list_guid must be a UUID')
