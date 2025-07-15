@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common'
-import { AppLogger } from 'src/app-logger/app-logger.service'
+import { AppLogger } from '@/app-logger/app-logger.service'
 
 @Injectable()
 export class PingService {

@@ -124,16 +124,6 @@ Logs use `AppLogger`, scoped by request context:
 
 ---
 
-## ✅ TODO / Acceptance Criteria Coverage
-
-- Validates file types and sizes
-- Handles failure modes: missing file, invalid UUID, bad content-type
-- Responds within 2 seconds (performance tuned)
-- E2E tested with real upload + Nock
-- Fully integrated into CI pipeline (pending)
-
----
-
 ## 🧪 Manual Testing (Optional)
 
 For full-stack testing with real videos:
