@@ -10,7 +10,9 @@ export class ListStatusEventsService {
     @InjectRepository(ListStatusEvent)
     private readonly eventRepo: Repository<ListStatusEvent>,
     @InjectRepository(List)
-    private readonly listRepo: Repository<List>, // 👈 this is the missing line
+    private readonly listRepo: Repository<List>,
+    @InjectRepository(ListStatusEvent)
+    private readonly listStatusRepo: Repository<ListStatusEvent>,
   ) {}
 
   async log(listId: string, event_type: string, details?: any) {
@@ -38,5 +40,15 @@ export class ListStatusEventsService {
     })
 
     return this.eventRepo.save(event)
+  }
+
+  async getLatestStatus(listGuid: string): Promise<string | null> {
+    const latest = await this.listStatusRepo.findOne({
+      where: { list: { list_guid: listGuid } },
+      relations: ['list'],
+      order: { created_at: 'DESC' },
+    })
+
+    return latest?.event_type ?? null
   }
 }
