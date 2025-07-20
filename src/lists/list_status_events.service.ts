@@ -42,13 +42,29 @@ export class ListStatusEventsService {
     return this.eventRepo.save(event)
   }
 
-  async getLatestStatus(listGuid: string): Promise<string | null> {
+  async getLatestStatus(
+    listGuid: string,
+  ): Promise<'UPLOADED' | 'PROCESSING' | 'DONE' | 'FAILED'> {
     const latest = await this.listStatusRepo.findOne({
       where: { list: { list_guid: listGuid } },
       relations: ['list'],
       order: { created_at: 'DESC' },
     })
 
-    return latest?.event_type ?? null
+    const raw = latest?.event_type
+
+    switch (raw) {
+      case undefined:
+      case null:
+        return 'UPLOADED'
+      case 'ocr_started':
+        return 'PROCESSING'
+      case 'ocr_completed':
+        return 'DONE'
+      case 'ocr_failed':
+        return 'FAILED'
+      default:
+        throw new Error(`Unhandled event_type: ${raw}`)
+    }
   }
 }

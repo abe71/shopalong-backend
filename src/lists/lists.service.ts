@@ -49,7 +49,7 @@ export class ListsService {
   async getStructuredResult(listGuid: string): Promise<ListResultDto> {
     const list = await this.listRepo.findOne({
       where: { list_guid: listGuid },
-      relations: ['items', 'userList'], // assumes correct relation names
+      relations: ['items', 'user'], // assumes correct relation names
     })
 
     if (!list) {

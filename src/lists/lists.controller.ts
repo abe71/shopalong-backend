@@ -20,13 +20,15 @@ import { ListStatusEventsService } from './list_status_events.service'
 import { ListResultDto } from './dto/list-result.dto'
 import { PendingListDto } from './dto/pending-list.dto'
 import { FailedListDto } from './dto/failed-list.dto'
+import { AppLogger } from '@/app-logger/app-logger.service'
 
 @ApiTags('Lists')
-@Controller('list')
+@Controller('lists')
 export class ListsController {
   constructor(
     private readonly listsService: ListsService,
     private readonly listStatusEventsService: ListStatusEventsService,
+    private readonly logger: AppLogger,
   ) {}
 
   @Get(':list_guid')
@@ -45,6 +47,7 @@ export class ListsController {
   async getListByGuid(
     @Param('list_guid') listGuid: string,
   ): Promise<ListResultDto | PendingListDto | FailedListDto> {
+    this.logger.log('list route hit')
     const list = await this.listsService.findByGuid(listGuid)
     if (!list) {
       throw new NotFoundException(`No list found for guid ${listGuid}`)

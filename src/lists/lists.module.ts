@@ -15,6 +15,7 @@ import { ListSuggestionsService } from './list_suggestions.service'
 import { ListStatusEventsService } from './list_status_events.service'
 import { ListRepository } from './list.repository'
 import { DataSource } from 'typeorm'
+import { ListsController } from './lists.controller'
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { DataSource } from 'typeorm'
       UserList,
     ]),
   ],
+  controllers: [ListsController],
   providers: [
     {
       provide: ListRepository,
