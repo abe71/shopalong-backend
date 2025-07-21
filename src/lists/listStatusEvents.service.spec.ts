@@ -32,30 +32,27 @@ describe('ListStatusEventsService', () => {
     listRepo = module.get<Repository<List>>(getRepositoryToken(List))
   })
 
-  it('should return null if no events exist', async () => {
+  it('should return "UPLOADED" if no events exist', async () => {
     jest.spyOn(repo, 'findOne').mockResolvedValue(null)
     const result = await service.getLatestStatus('nonexistent-guid')
-    expect(result).toBeNull()
+    expect(result).toBe('UPLOADED')
   })
 
-  it('should return the event_type of the latest event', async () => {
+  it('should return the mapped status for "ocr_completed"', async () => {
     const list = { list_guid: 'abc-123' } as List
-
     const latestEvent: Partial<ListStatusEvent> = {
       list,
       created_at: new Date('2023-01-02'),
       event_type: 'ocr_completed',
     }
-
     jest
       .spyOn(repo, 'findOne')
       .mockResolvedValue(latestEvent as ListStatusEvent)
-
     const result = await service.getLatestStatus('abc-123')
-    expect(result).toBe('ocr_completed')
+    expect(result).toBe('DONE')
   })
 
-  it('should handle multiple calls with different GUIDs', async () => {
+  it('should handle multiple calls with different GUIDs and return mapped statuses', async () => {
     const listA = { list_guid: 'list-a' } as List
     const listB = { list_guid: 'list-b' } as List
 
@@ -71,7 +68,6 @@ describe('ListStatusEventsService', () => {
     }
 
     const spy = jest.spyOn(repo, 'findOne')
-
     spy.mockImplementation(({ where }: any) => {
       if (where.list.list_guid === 'list-a')
         return Promise.resolve(eventA as ListStatusEvent)
@@ -80,8 +76,8 @@ describe('ListStatusEventsService', () => {
       return Promise.resolve(null)
     })
 
-    expect(await service.getLatestStatus('list-a')).toBe('ocr_started')
-    expect(await service.getLatestStatus('list-b')).toBe('ocr_completed')
-    expect(await service.getLatestStatus('unknown')).toBeNull()
+    expect(await service.getLatestStatus('list-a')).toBe('PROCESSING')
+    expect(await service.getLatestStatus('list-b')).toBe('DONE')
+    expect(await service.getLatestStatus('unknown')).toBe('UPLOADED')
   })
 })
