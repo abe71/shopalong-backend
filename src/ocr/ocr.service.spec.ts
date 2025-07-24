@@ -11,6 +11,7 @@ import { UserList } from '@/lists/entities/user_lists.entity'
 import { OCR_VIDEO_LIMITS } from '@/shopalong-constants'
 import { getRepositoryToken } from '@nestjs/typeorm'
 import { Repository } from 'typeorm'
+import { ListsService } from '@/lists/lists.service'
 
 const TEST_ENTITIES = [
   List,
@@ -57,7 +58,9 @@ describe('OcrController (e2e)', () => {
   ): Promise<void> {
     const start = Date.now()
     while (Date.now() - start < maxWaitMs) {
-      const list = await listRepo.findOne({ where: { list_guid: listGuid } })
+      const list = await listRepo.findOne({
+        where: { list_guid: listGuid },
+      })
 
       if (list) {
         const events = await eventRepo.find({
@@ -88,10 +91,8 @@ describe('OcrController (e2e)', () => {
   }
 
   it('/ocr/process (POST) - accepts valid upload', async () => {
-    const listGuid = '123e4567-e89b-12d3-a456-426614174000'
     const response = await request(app.getHttpServer())
       .post('/ocr/process')
-      .field('list_guid', listGuid)
       .field('device_uuid', 'device-abc')
       .field('device_info', 'iPhone')
       .attach('full', fakeVideos.full, 'video_full.mp4')
@@ -101,21 +102,22 @@ describe('OcrController (e2e)', () => {
     expect(response.status).toBe(202)
     expect(response.body).toMatchObject({
       status: 'accepted',
-      list_guid: listGuid,
       message: expect.any(String),
     })
-
-    await waitForEvent(listGuid, ['ocr_started'])
+    expect(response.body.origin_list_guid).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+    )
+    const originListGuid = response.body.origin_list_guid
+    await waitForEvent(originListGuid, ['ocr_started']) // We know origin and list_guid are the same, only because it is a test
   })
 
   it('/ocr/process (POST) - fails on invalid list_guid', async () => {
     const response = await request(app.getHttpServer())
       .post('/ocr/process')
-      .field('list_guid', 'not-a-guid')
       .field('device_uuid', 'device-abc')
       .attach('full', fakeVideos.full, 'video_full.mp4')
 
     expect(response.status).toBe(400)
-    expect(response.body.message).toContain('list_guid must be a UUID')
+    expect(response.body.message).toContain('Missing file:')
   })
 })

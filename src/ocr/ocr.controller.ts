@@ -31,14 +31,13 @@ export class OcrController {
     schema: {
       type: 'object',
       properties: {
-        list_guid: { type: 'string', format: 'uuid' },
         device_uuid: { type: 'string' },
         device_info: { type: 'string', nullable: true },
         full: { type: 'string', format: 'binary' },
         top: { type: 'string', format: 'binary' },
         bottom: { type: 'string', format: 'binary' },
       },
-      required: ['list_guid', 'device_uuid', 'full', 'top', 'bottom'],
+      required: ['device_uuid', 'full', 'top', 'bottom'],
     },
   })
   @ApiResponse({
@@ -50,14 +49,13 @@ export class OcrController {
     @Body() body: OCRUploadDto,
     @UploadedFiles() files: MulterFile[],
   ): Promise<OCRProcessResponseDto> {
-    const { listGuid, deviceUuid, deviceInfo, fileMap } =
+    const { deviceUuid, deviceInfo, fileMap } =
       this.ocrService.extractUploadData(body, files)
 
-    await this.ocrService.uploadFiles(listGuid, deviceUuid, fileMap, deviceInfo)
+    await this.ocrService.uploadFiles(deviceUuid, fileMap, deviceInfo)
 
     // This call will complete significantly after this method completes.
-    this.ocrService.launchAsyncOcrProcessing(
-      listGuid,
+    const list = await this.ocrService.launchAsyncOcrProcessing(
       deviceUuid,
       fileMap,
       deviceInfo,
@@ -66,7 +64,7 @@ export class OcrController {
     return {
       status: 'accepted',
       message: 'OCR request validated and forwarded for processing',
-      list_guid: listGuid,
+      origin_list_guid: list.origin_list_guid,
     }
   }
 }

@@ -8,5 +8,5 @@ export class OCRProcessResponseDto {
   message: string
 
   @ApiProperty({ format: 'uuid' })
-  list_guid: string
+  origin_list_guid: string
 }

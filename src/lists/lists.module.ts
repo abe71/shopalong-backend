@@ -16,6 +16,8 @@ import { ListStatusEventsService } from './list_status_events.service'
 import { ListRepository } from './list.repository'
 import { DataSource } from 'typeorm'
 import { ListsController } from './lists.controller'
+import { User } from '@/users/entities/users.entity'
+import { UsersService } from '@/users/users.service'
 
 @Module({
   imports: [
@@ -26,6 +28,7 @@ import { ListsController } from './lists.controller'
       ListSuggestion,
       ListStatusEvent,
       UserList,
+      User,
     ]),
   ],
   controllers: [ListsController],
@@ -41,6 +44,7 @@ import { ListsController } from './lists.controller'
     ListItemAlternativesService,
     ListSuggestionsService,
     ListStatusEventsService,
+    UsersService,
   ],
   exports: [
     ListsService,
@@ -48,6 +52,7 @@ import { ListsController } from './lists.controller'
     ListItemAlternativesService,
     ListSuggestionsService,
     ListStatusEventsService,
+    UsersService,
     ListRepository,
     TypeOrmModule,
   ],

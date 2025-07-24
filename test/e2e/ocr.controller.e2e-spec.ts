@@ -146,7 +146,6 @@ describe('OcrController (e2e) with full processing', () => {
 
     const response = await request(app.getHttpServer())
       .post('/ocr/process')
-      .field('list_guid', list_guid)
       .field('device_uuid', 'device-abc')
       .field('device_info', JSON.stringify({ model: 'iPhone' }))
       .attach('full', path.join(__dirname, 'sample.mp4'))
@@ -156,26 +155,25 @@ describe('OcrController (e2e) with full processing', () => {
     expect(response.status).toBe(202)
     expect(response.body).toMatchObject({
       status: 'accepted',
-      list_guid,
       message: expect.any(String),
     })
 
-    await waitForEvent(listRepo, eventRepo, list_guid, [
+    await waitForEvent(listRepo, eventRepo, response.body.origin_list_guid, [
       'ocr_started',
-      'ocr_completed',
+      'done',
     ])
 
-    const list = await listRepo.findOne({ where: { list_guid } })
+    const list = await listRepo.findOne({
+      where: { origin_list_guid: response.body.origin_list_guid },
+    })
     expect(list).toBeDefined()
-    expect(list.list_guid).toBe(list_guid)
+    expect(list.list_guid).toBe(response.body.origin_list_guid) // We expect the IDs to be same since we are on version 1
 
     const events = await eventRepo.find({
       where: { list: { id: list.id } },
       relations: ['list'],
     })
     const eventTypes = events.map((e) => e.event_type)
-    expect(eventTypes).toEqual(
-      expect.arrayContaining(['ocr_started', 'ocr_completed']),
-    )
+    expect(eventTypes).toEqual(expect.arrayContaining(['ocr_started', 'done']))
   }, 2000)
 })

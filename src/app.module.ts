@@ -37,7 +37,7 @@ import { ListSuggestion } from './lists/entities/list_suggestions.entity'
       ): Promise<TypeOrmModuleOptions> => {
         const dbType = config.get<string>('DB_TYPE') || 'sqlite'
 
-        if (dbType === 'sqlite') {
+        if (dbType === 'sqlite' || process.env.NODE_ENV === 'test') {
           return {
             type: 'sqlite',
             database: ':memory:',

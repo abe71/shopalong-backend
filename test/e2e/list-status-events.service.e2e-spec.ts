@@ -66,7 +66,7 @@ describe('ListStatusEventsService (e2e)', () => {
     const list_guid = uuidv4()
 
     const listRepo = app.get<Repository<List>>(getRepositoryToken(List))
-    await listRepo.save({ list_guid })
+    await listRepo.save({ list_guid, origin_list_guid: list_guid, version: 1 })
 
     const payload = {
       list_guid,

@@ -1,6 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing'
 import { getRepositoryToken } from '@nestjs/typeorm'
-import { ListStatusEventsService } from './list_status_events.service'
+import {
+  ListStatusEventsService,
+  ListStatusCode,
+} from './list_status_events.service'
 import { ListStatusEvent } from './entities/list_status_events.entity'
 import { List } from './entities/lists.entity'
 import { Repository } from 'typeorm'
@@ -32,24 +35,25 @@ describe('ListStatusEventsService', () => {
     listRepo = module.get<Repository<List>>(getRepositoryToken(List))
   })
 
-  it('should return "UPLOADED" if no events exist', async () => {
+  it('should throw NotFoundException if no events exist', async () => {
     jest.spyOn(repo, 'findOne').mockResolvedValue(null)
-    const result = await service.getLatestStatus('nonexistent-guid')
-    expect(result).toBe('UPLOADED')
+    await expect(service.getLatestStatus('nonexistent-guid')).rejects.toThrow(
+      'No status found for list nonexistent-guid',
+    )
   })
 
-  it('should return the mapped status for "ocr_completed"', async () => {
+  it('should return the mapped status for "done"', async () => {
     const list = { list_guid: 'abc-123' } as List
     const latestEvent: Partial<ListStatusEvent> = {
       list,
       created_at: new Date('2023-01-02'),
-      event_type: 'ocr_completed',
+      event_type: 'done',
     }
     jest
       .spyOn(repo, 'findOne')
       .mockResolvedValue(latestEvent as ListStatusEvent)
     const result = await service.getLatestStatus('abc-123')
-    expect(result).toBe('DONE')
+    expect(result).toBe(ListStatusCode.DONE)
   })
 
   it('should handle multiple calls with different GUIDs and return mapped statuses', async () => {
@@ -64,7 +68,7 @@ describe('ListStatusEventsService', () => {
     const eventB = {
       list: listB,
       created_at: new Date(),
-      event_type: 'ocr_completed',
+      event_type: 'done',
     }
 
     const spy = jest.spyOn(repo, 'findOne')
@@ -76,8 +80,12 @@ describe('ListStatusEventsService', () => {
       return Promise.resolve(null)
     })
 
-    expect(await service.getLatestStatus('list-a')).toBe('PROCESSING')
-    expect(await service.getLatestStatus('list-b')).toBe('DONE')
-    expect(await service.getLatestStatus('unknown')).toBe('UPLOADED')
+    expect(await service.getLatestStatus('list-a')).toBe(
+      ListStatusCode.OCR_STARTED,
+    )
+    expect(await service.getLatestStatus('list-b')).toBe(ListStatusCode.DONE)
+    await expect(service.getLatestStatus('nonexistent-guid')).rejects.toThrow(
+      'No status found for list nonexistent-guid',
+    )
   })
 })

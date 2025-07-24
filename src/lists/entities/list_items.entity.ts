@@ -24,12 +24,12 @@ export class ListItem {
   ordinal: number
 
   @Column()
-  label: string
+  name: string
 
   @Column()
   category: string
 
-  @Column('float')
+  @Column('float', { default: 1.0 })
   confidence: number
 
   @OneToMany(() => ListItemAlternative, (alt) => alt.item)

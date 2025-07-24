@@ -1,9 +1,16 @@
-import { Injectable } from '@nestjs/common'
+import { Injectable, NotFoundException } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
 import { Repository } from 'typeorm'
 import { ListStatusEvent } from './entities/list_status_events.entity'
 import { List } from './entities/lists.entity'
 
+export enum ListStatusCode {
+  OCR_STARTED = 'ocr_started',
+  OCR_FAILED = 'ocr_failed',
+  DONE = 'done',
+  PROCESSING = 'processing',
+  FAILED = 'failed',
+}
 @Injectable()
 export class ListStatusEventsService {
   constructor(
@@ -14,15 +21,6 @@ export class ListStatusEventsService {
     @InjectRepository(ListStatusEvent)
     private readonly listStatusRepo: Repository<ListStatusEvent>,
   ) {}
-
-  async log(listId: string, event_type: string, details?: any) {
-    const event = this.eventRepo.create({
-      list: { list_guid: listId },
-      event_type,
-      details,
-    })
-    return this.eventRepo.save(event)
-  }
 
   async create(input: {
     list_guid: string
@@ -42,29 +40,26 @@ export class ListStatusEventsService {
     return this.eventRepo.save(event)
   }
 
-  async getLatestStatus(
-    listGuid: string,
-  ): Promise<'UPLOADED' | 'PROCESSING' | 'DONE' | 'FAILED'> {
+  async getLatestStatus(listGuid: string): Promise<ListStatusCode> {
     const latest = await this.listStatusRepo.findOne({
       where: { list: { list_guid: listGuid } },
       relations: ['list'],
       order: { created_at: 'DESC' },
     })
 
-    const raw = latest?.event_type
+    if (!latest) {
+      throw new NotFoundException(`No status found for list ${listGuid}`)
+    }
 
-    switch (raw) {
-      case undefined:
-      case null:
-        return 'UPLOADED'
-      case 'ocr_started':
-        return 'PROCESSING'
-      case 'ocr_completed':
-        return 'DONE'
-      case 'ocr_failed':
-        return 'FAILED'
+    // Normalize to enum value
+    switch (latest.event_type) {
+      case ListStatusCode.DONE:
+      case ListStatusCode.PROCESSING:
+      case ListStatusCode.OCR_STARTED:
+      case ListStatusCode.FAILED:
+        return latest.event_type as ListStatusCode
       default:
-        throw new Error(`Unhandled event_type: ${raw}`)
+        throw new Error(`Unhandled event_type: ${latest.event_type}`)
     }
   }
 }
